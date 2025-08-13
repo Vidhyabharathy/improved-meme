@@ -1,0 +1,304 @@
+<html>
+    <title>  Astrology Chart generator </title>
+    <link rel="stylesheet" href="style.css" />
+
+<body>
+
+    <div class="container">
+     
+        <h1> Astrology chart generator</h1>
+
+        <form id="birthForm">
+
+            <label >
+                Name:
+                <input type="text" id="name">
+            </label>
+
+            <label >
+                Date of birth:
+                <input type="date" id="dob">
+            </label>
+
+            <label >
+                Time of birth:
+                <input type="time" id="tob">
+            </label>
+
+            <label >
+                Place of birth:
+                <input type="text" id="pob">
+
+                <div id="suggestions" class="autocomplete-suggestions"></div>
+            </label>
+
+
+            <input type="hidden" id="latitude" />
+            <input type="hidden" id="longitude" />
+
+            <button id="sel_button" type="submit"> Generate chart</button>
+
+        </form>
+
+
+        <div id="chartContainer">
+            <svg id="chart" width="300" height="300" viewBox="0 0 300 300">
+              <!-- Zodiac wheel will be drawn here -->
+            </svg>
+          </div>
+
+
+
+          <div id="interpretations">
+            <h2>Interpretations</h2>
+            <div id="outputText">Your birth chart analysis will appear here.</div>
+          </div>
+
+
+
+
+    </div>
+
+
+    <script>
+      // ---- 1) POST-based AstronomyAPI fetch (no CORS issues if run server‑side or proxy) ----
+      async function fetchPlanetPositions(date, time, lat, lon) {
+        const endpoint = `https://api.astronomyapi.com/api/v2/bodies/positions`;
+        const url = `${endpoint}?latitude=${lat}&longitude=${lon}&elevation=0&from_date=${date}&to_date=${date}&time=${time}`;
+        const response = await fetch(url, {
+          headers: {
+            "Authorization": "Basic " + btoa("0fad6292-5d34-4c31-9259-2b965b7604d3:798bb3c251551fa44838505d0c53e18557d408ddba65469f00d439262dde7b496579b88aeda97b6fe3543f0f043d1b8e0e08e504ef0ca6efd474e0e2720fbefdf2b7063ca535e43ab133bdc6ee968e3c96fb768e6296dab96e46622c21104717636a91927665dcd858c03d7eee3caf6d"),
+            "Content-Type": "application/json"
+          }
+        });
+        const data = await response.json();
+        console.log("API Response:", data);
+        return data;
+      }
+      
+      // ---- 2) Nominatim Autocomplete for #pob ----
+      document.addEventListener("DOMContentLoaded", () => {
+        const placeInput  = document.getElementById('pob');
+        const suggestions = document.getElementById('suggestions');
+      
+        placeInput.addEventListener('input', async () => {
+          const q = placeInput.value.trim();
+          suggestions.innerHTML = '';
+          if (q.length < 2) return;
+      
+          try {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5`;
+            const res = await fetch(url, { 
+              headers: { 'User-Agent': 'AstroApp/1.0 (you@example.com)' } 
+            });
+            const places = await res.json();
+      
+            places.forEach(({ display_name, lat, lon }) => {
+              const div = document.createElement('div');
+              div.textContent = display_name;
+              div.addEventListener('click', () => {
+                placeInput.value = display_name;
+                suggestions.innerHTML = '';
+                document.getElementById('latitude').value  = lat;
+                document.getElementById('longitude').value = lon;
+              });
+              suggestions.appendChild(div);
+            });
+          } catch (err) {
+            console.error("Autocomplete error:", err);
+          }
+        });
+      
+        document.addEventListener('click', e => {
+          if (e.target !== placeInput) suggestions.innerHTML = '';
+        });
+      });
+      
+      // ---- 3) Core astrology utilities & drawing ----
+      function longitudeToXY(deg, r, cx, cy) {
+        const a = (deg - 90) * Math.PI / 180;
+        return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+      }
+      
+      function getZodiacSign(deg) {
+        const signs = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo",
+                       "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+        return signs[Math.floor(((deg % 360)+360)%360 / 30)];
+      }
+      
+      function extractPlanets(api) {
+        return api.data.table.rows
+          .map(r => {
+            const name = r.entry?.name;
+            const ra   = r.cells?.[0]?.position?.equatorial?.rightAscension?.hours;
+            if (!name || !ra) return null;
+            return { name, longitude: parseFloat(ra) * 15 };
+          })
+          .filter(Boolean);
+      }
+      
+      function drawZodiacWheel() {
+        const svg = document.getElementById('chart');
+        svg.innerHTML = '';
+        const cx=150, cy=150, R=100;
+      
+        // ← FIXED: set SVG circle attributes via setAttribute()
+        const circle = document.createElementNS(svg.namespaceURI,'circle');
+        circle.setAttribute('cx', cx);
+        circle.setAttribute('cy', cy);
+        circle.setAttribute('r', R);
+        circle.setAttribute('stroke', '#000');
+        circle.setAttribute('fill', 'none');
+        svg.appendChild(circle);
+      
+        // spokes
+        for (let i=0; i<12; i++) {
+          const a = i*30 * Math.PI/180;
+          const x = cx + R*Math.cos(a), y = cy + R*Math.sin(a);
+          const l = document.createElementNS(svg.namespaceURI,'line');
+          l.setAttribute('x1', cx);
+          l.setAttribute('y1', cy);
+          l.setAttribute('x2', x);
+          l.setAttribute('y2', y);
+          l.setAttribute('stroke', '#444');
+          svg.appendChild(l);
+        }
+      
+        // zodiac glyphs
+        const glyphs = ["♈︎","♉︎","♊︎","♋︎","♌︎","♍︎","♎︎","♏︎","♐︎","♑︎","♒︎","♓︎"];
+        glyphs.forEach((s,i) => {
+          const a = (i*30 - 90)*Math.PI/180;
+          const x = cx + Math.cos(a)*(R+15), y = cy + Math.sin(a)*(R+15)+4;
+          const t = document.createElementNS(svg.namespaceURI,'text');
+          t.setAttribute('x', x);
+          t.setAttribute('y', y);
+          t.setAttribute('text-anchor', 'middle');
+          t.setAttribute('font-size', '12');
+          t.textContent = s;
+          svg.appendChild(t);
+        });
+      }
+      
+      function plotPlanetsOnChart(api) {
+        const svg     = document.getElementById('chart');
+        const cx=150, cy=150, R=100;
+        const planets = extractPlanets(api);
+        svg.querySelectorAll('.planet-marker').forEach(e => e.remove());
+      
+        // tooltips
+        let tooltip = document.getElementById('tooltip');
+        if (!tooltip) {
+          tooltip = document.createElement('div');
+          tooltip.id = 'tooltip';
+          Object.assign(tooltip.style, {
+            position:'absolute', padding:'4px 8px', background:'#fff',
+            border:'1px solid #ccc', pointerEvents:'none', display:'none',
+            fontSize:'11px', borderRadius:'4px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)'
+          });
+          document.body.appendChild(tooltip);
+        }
+      
+        // draw planets
+        planets.forEach(p => {
+          const {x,y} = longitudeToXY(p.longitude, R, cx, cy);
+          const circle = document.createElementNS(svg.namespaceURI,'circle');
+          circle.setAttribute('cx', x);
+          circle.setAttribute('cy', y);
+          circle.setAttribute('r', 6);
+          circle.setAttribute('fill', '#4b0082');
+          circle.classList.add('planet-marker');
+      
+          circle.addEventListener('mouseenter', () => {
+            tooltip.textContent = `${p.name} @ ${p.longitude.toFixed(2)}°`;
+            tooltip.style.display = 'block';
+          });
+          circle.addEventListener('mousemove', e => {
+            tooltip.style.left = e.pageX + 8 + 'px';
+            tooltip.style.top  = e.pageY + 8 + 'px';
+          });
+          circle.addEventListener('mouseleave', () => {
+            tooltip.style.display = 'none';
+          });
+      
+          svg.appendChild(circle);
+        });
+      
+        // table
+        const rowsHtml = planets.map(p => `
+          <tr>
+            <td>${p.name}</td>
+            <td>${p.longitude.toFixed(2)}°</td>
+            <td>${getZodiacSign(p.longitude)}</td>
+          </tr>`).join('');
+        document.getElementById('outputText').innerHTML = `
+          <table style="border:1px solid #ccc;border-collapse:collapse;width:100%">
+            <thead><tr>
+              <th style="border:1px solid #ccc;padding:4px;">Planet</th>
+              <th style="border:1px solid #ccc;padding:4px">Lon (°)</th>
+              <th style="border:1px solid #ccc;padding:4px">Sign</th>
+            </tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>`;
+      }
+      
+      // ---- 4) Wire up form submit once DOM is ready ----
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById('birthForm');
+        form.addEventListener('submit', async e => {
+          e.preventDefault();
+          const name = form.querySelector('#name').value;
+          const dob  = form.querySelector('#dob').value;
+          const tob  = form.querySelector('#tob').value;
+          const time = tob.length===5 ? tob+":00" : tob;
+          const pob  = form.querySelector('#pob').value;
+          const lat  = form.querySelector('#latitude').value;
+          const lon  = form.querySelector('#longitude').value;
+      
+          if (!lat||!lon) {
+            return alert("Select a place from suggestions.");
+          }
+          document.getElementById('outputText').textContent =
+            `Hello ${name}, generating chart for ${dob} ${time} at ${pob}…`;
+      
+          try {
+            const apiRes = await fetchPlanetPositions(dob, time, lat, lon);
+            drawZodiacWheel();
+            plotPlanetsOnChart(apiRes);
+          } catch (err) {
+            console.error(err);
+            alert("Error fetching planetary data:\n" + err.message);
+          }
+        });
+      });
+      </script>
+      
+
+
+
+
+
+
+
+
+</body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</html>

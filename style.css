@@ -1,0 +1,99 @@
+
+  body {
+    /* your fallback color */
+    background-color: #f4f4f4;
+  
+    /* the image */
+    background-image: url('https://png.pngtree.com/background/20250109/original/pngtree-astrology-zodiac-sign-of-horoscope-in-deep-blue-the-star-and-picture-image_15515530.jpg');
+  
+    /* prevent the browser from repeating it */
+    background-repeat: no-repeat;
+  
+    /* stretch/scale it to always fill the screen */
+    background-size: cover;
+  
+    /* keep it centered (optional) */
+    background-position: center center;
+  
+    /* fix it in place so content scrolls over it (optional) */
+    background-attachment: fixed;
+  
+    font-family: Arial, sans-serif;
+    padding: 2rem;
+    color: #333;
+  }
+  
+  
+  .container {
+    max-width: 600px;
+    margin: auto;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    background: rgba(10, 25, 50, 0.8);
+    color: #fff; /
+  }
+  
+  form label {
+    display: block;
+    margin: 1rem 0 0.5rem;
+  }
+  
+  input {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  button {
+    padding: 0.6rem 1rem;
+    background-color: #4b0082;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  #chartContainer {
+    margin-top: 2rem;
+    text-align: center;
+  }
+  
+  svg {
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    background-color: #fffbe6;
+  }
+
+  #tooltip {
+    position: absolute;
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 5px 8px;
+    font-size: 12px;
+    pointer-events: none;
+    display: none;
+    z-index: 10;
+  }
+
+  #tooltip {
+    position: absolute;
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 5px 8px;
+    font-size: 12px;
+    pointer-events: none;
+    display: none;
+    z-index: 10;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  }
+
+  #outputText th{
+    color: white;
+  }
+  #outputText tbody{
+    color: white;
+  }
+  
+  
